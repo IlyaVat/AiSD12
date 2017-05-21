@@ -1,16 +1,11 @@
 #ifndef SCREEN_H
 #define SCREEN_H
 
-const int scale = 2;
-const int XMAX = 80*scale;
-const int YMAX = 40*scale;
-const int rad = 4 * scale;
+const int XMAX = 80*2;
+const int YMAX = 40*2;
+const int rad = 6;
 
-char screen[XMAX][YMAX];
-enum color { black = '*', white = ' ' };
-
-class point //Точка
-{
+class point { //Точка
 public:
     int x, y;
     point() {};
@@ -18,8 +13,6 @@ public:
 };
 
 //Функции работы с экраном
-extern int on_screen(int a, int b);
-extern int on_screen(point p) { return on_screen(p.x, p.y); }
 extern void put_point(int a, int b); //Вывод точки
 inline void put_point(point p) { put_point(p.x, p.y); }
 extern void put_line(int, int, int, int); //Вывод линии

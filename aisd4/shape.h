@@ -1,12 +1,39 @@
 #ifndef SHAPE_H
 #define SHAPE_H
 #include <iostream>
+#include <conio.h>
 #include "screen.h"
+#include <exception>
+
+#define Test 5
+#define OutOfScreen 1
+#define WrongParam 2
+#define NotEnoughSpace 3
 
 using namespace std;
 
-char screen[XMAX][YMAX];
-enum color { black = '#', white = ' ' };
+class ForbiddenCoord
+{
+//private:
+//    char msg;
+
+//public:
+//    MyError()
+//    {
+//        msg=0;
+//    }
+
+//    MyError(char newMsg)
+//    {
+//        msg=newMsg;
+//    }
+
+//    char what()
+//    {
+//        return msg;
+//    }
+
+};
 
 void screen_init()
 {
@@ -22,7 +49,9 @@ int on_screen(int a, int b) //Попадание на экран
 
 void put_point(int a, int b)
 {
+    //MyError exp(OutOfScreen);
     if (on_screen(a, b)) screen[a][b] = black;
+    else throw ForbiddenCoord();
 }
 
 void put_line(int x0, int y0, int x1, int y1)
@@ -32,23 +61,48 @@ void put_line(int x0, int y0, int x1, int y1)
     Уравнение прямой: b(x-x0) + a(y-y0) = 0
     Минимизируется величина abs(eps)
     где eps = 2*(b(x-x0))+a(y-y0)
-    */
-    int dx = 1;
-    int a = x1 - x0;
-    if (a < 0) dx = -1, a = -a;
-    int dy = 1;
-    int b = y1 - y0;
-    if (b < 0) dy = -1, b = -b;
-    int two_a = 2 * a;
-    int two_b = 2 * b;
-    int xcrit = -b + two_a;
-    int eps = 0;
+//    */
+//    int dx = 1;
+//    int a = x1 - x0;
+//    if (a < 0) dx = -1, a = -a;
+//    int dy = 1;
+//    int b = y1 - y0;
+//    if (b < 0) dy = -1, b = -b;
+//    int two_a = 2 * a;
+//    int two_b = 2 * b;
+//    int xcrit = -b + two_a;
+//    int eps = 0;
+//    put_point(x1, y1);
+//    while(x0 == x1 && y0 == y1) {
+//        put_point(x0, y0);
+//        if (eps <= xcrit) x0 += dx, eps += two_b;
+//        if (eps >= a || a < b)y0 += dy, eps -= two_a;
+//    }
 
-    for (;;) {
+
+    const int deltaX = abs(x1 - x0);
+    const int deltaY = abs(y1 - y0);
+    const int signX = x0 < x1 ? 1 : -1;
+    const int signY = y0 < y1 ? 1 : -1;
+    //
+    int error = deltaX - deltaY;
+    //
+    put_point(x1, y1);
+    while(x0 != x1 || y0 != y1)
+   {
         put_point(x0, y0);
-        if (x0 == x1 && y0 == y1) break;
-        if (eps <= xcrit) x0 += dx, eps += two_b;
-        if (eps >= a || a < b)y0 += dy, eps -= two_a;
+        const int error2 = error * 2;
+        //
+        if(error2 > -deltaY)
+        {
+            error -= deltaY;
+            x0 += signX;
+        }
+        if(error2 < deltaX)
+        {
+            error += deltaX;
+            y0 += signY;
+        }
     }
 }
 
@@ -61,7 +115,8 @@ void screen_clear() { screen_init(); }
 
 void screen_refresh()
 {
-    for (int y = YMAX - 1; 0 <= y; --y) {
+    for (int y = 0; y < YMAX; ++y)
+    {
         for (int x = 0; x < XMAX; ++x)
             cout << screen[x][y];
         cout << '\n';
@@ -111,10 +166,10 @@ class line : public shape {
     point w, e;
 public:
     line(point a, point b) : w(a), e(b) {};
-    line(point a, int L) : w(point(a.x + L - 1, a.y)), e(a) {};
+    line(point a, int L) : w(a), e(point(a.x + L - 1, a.y)) {};
 
     point north() const { return point((w.x + e.x) / 2, e.y<w.y ? w.y : e.y); }
-    point south() const { return point((w.x + e.x) / 2, e.y<w.y ? e.y : w.y); }
+    point south() const { return point((w.x + e.x) / 2, e.y < w.y ? e.y : w.y); }
     point east() const { return point((w.x + e.x) / 2, e.y<w.y ? e.y : w.y); }
     point west() const { return point((w.x + e.x) / 2, e.y<w.y ? e.y : w.y); }
     point neast() const { return point((w.x + e.x) / 2, e.y<w.y ? e.y : w.y); }
@@ -123,10 +178,39 @@ public:
     point swest() const { return point((w.x + e.x) / 2, e.y<w.y ? e.y : w.y); }
     point center() const { return point((w.x + e.x) / 2, e.y<w.y ? e.y : w.y); }
 
-    void move(int a, int b) { w.x += a; w.y += b;e.x += a; e.y += b; }
+    void move(int a, int b) {
+        w.x += a;
+        w.y += b;
+        e.x += a;
+        e.y += b;
+    }
 
-    void draw() {
-        put_line(w, e);
+    void draw()
+    {
+        try
+        {
+            put_line(w, e);
+        }
+        catch(ForbiddenCoord)
+        {
+            cout << "coord error\n";
+
+            if (e.x >= XMAX - 1)
+                if(w.x <= 0)
+                    w.x = 5;
+                else
+                    move(XMAX - e.x -2, 0);
+            else if (w.x <= 0)
+                 move(-w.x + 1, 0);
+
+            if ((e.y<w.y ? w.y : e.y) >= YMAX - 1)
+                move(0, YMAX - (e.y<w.y ? w.y : e.y) -2);
+            else if ((e.y>w.y ? w.y : e.y) <= 0)
+                 move(0, -w.y + 1);
+
+            //radius -= 4;
+            draw();
+        }
     }
 };
 
@@ -135,15 +219,17 @@ class rectangle : public rotatable
 {
     void rotate_right()//Поворот относительно se
     {
-        int w = ne.x - sw.x, h = ne.y - sw.y;
-        sw.x = ne.x - h * 2;
-        ne.y = sw.y + w / 2;
+        int w = se.x - nw.x,
+            h = se.y - nw.y;
+        nw.x = se.x - h * 2;
+        se.y = nw.y + w / 2;
     }
     void rotate_left() //Поворот относительно sw
     {
-        int w = ne.x - sw.x, h = ne.y - sw.y;
-        ne.x = sw.x + h * 2;
-        ne.y = sw.y + w / 2;
+        int w = se.x - nw.x,
+            h = se.y - nw.y;
+        se.x = nw.x + h * 2;
+        se.y = nw.y + w / 2;
     }
 protected:
     /*
@@ -155,26 +241,26 @@ protected:
     |             |
     sw-----s-----se
     */
-    point sw, ne;
+    point nw, se;
 
 
 public:
     rectangle(point, point);
-    point north() const { return point((sw.x + ne.x) / 2, ne.y); }
-    point south() const { return point((sw.x + ne.x) / 2, sw.y); }
-    point east() const { return point(ne.x, (sw.y + ne.y) / 2); }
-    point west() const { return point(sw.x, (sw.y + ne.y) / 2); }
-    point neast() const { return ne; }
-    point seast() const { return point(ne.x, sw.y); }
-    point nwest() const { return point(sw.x, ne.y); }
-    point swest() const { return sw; }
+    point north() const { return point((se.x + nw.x) / 2, nw.y); }
+    point south() const { return point((se.x + nw.x) / 2, se.y); }
+    point east() const { return point(se.x, (se.y + nw.y) / 2); }
+    point west() const { return point(nw.x, (se.y + nw.y) / 2); }
+    point neast() const { return point(se.x, nw.y); }
+    point seast() const { return se; }
+    point nwest() const { return nw; }
+    point swest() const { return point(nw.x, se.y); }
     point center() const { return point(west().x + ((east().x - west().x) / 2), east().y); }
     void move(int a, int b)
     {
-        sw.x += a;
-        sw.y += b;
-        ne.x += a;
-        ne.y += b;
+        nw.x += a;
+        nw.y += b;
+        se.x += a;
+        se.y += b;
     }
     void draw();
 };
@@ -183,38 +269,63 @@ rectangle::rectangle(point a, point b)
 {
     if (a.x <= b.x)
         if (a.y <= b.y) {
-            sw = a;
-            ne = b;
+            nw = a;
+            se = b;
         }
         else {
-            sw = point(a.x, b.y);
-            ne = point(b.x, a.y);
+            nw = point(a.x, b.y);
+            se = point(b.x, a.y);
         }
     else
         if (a.y <= b.y) {
-            sw = point(b.x, a.y);
-            ne = point(a.x, b.y);
+            nw = point(b.x, a.y);
+            se = point(a.x, b.y);
         }
         else {
-            sw = b;
-            ne = a;
+            se = b;
+            nw = a;
         }
 }
 
 void rectangle::draw()
 {
-    point nw(sw.x, ne.y);
-    point se(ne.x, sw.y);
-    put_line(nw, ne);
-    put_line(ne, se);
-    put_line(se, sw);
-    put_line(sw, nw);
+    try
+    {
+        point sw(nw.x, se.y);
+        point ne(se.x, nw.y);
+        put_line(nw, ne);
+        put_line(ne, se);
+        put_line(se, sw);
+        put_line(sw, nw);
+    }
+    catch(ForbiddenCoord)
+    {
+        cout << "coord error\n";
+
+        point sw(nw.x, se.y);
+        point ne(se.x, nw.y);
+        if (se.x >= XMAX - 1)
+            if(nw.x <= 0)
+                nw.x = 5;
+            else
+                move(XMAX - se.x -2, 0);
+        if (nw.x <= 0)
+             move(-nw.x + 1, 0);
+
+        if (se.y >= YMAX - 1)
+            move(0, YMAX - se.y -2);
+        if ((nw.y>se.y ? se.y : nw.y) <= 0)
+             move(0, -nw.y + 1);
+
+        draw();
+    }
 }
 
 void shape_refresh()//Перерисовка всех фигур
 {
     screen_clear();
-    for (shape* p = shape::list; p; p = p->next) p->draw();
+    for (shape* p = shape::list; p; p = p->next)
+        p->draw();
     screen_refresh();
 }
 
@@ -222,28 +333,28 @@ void up(shape* p, const shape* q)//Поместить p над q
 {
     point n = q->north();
     point s = p->south();
-    p->move(n.x - s.x, n.y - s.y + 1);
+    p->move(n.x - s.x, n.y - s.y - 1);
 }
 
 void left(shape* p, const shape* q)//Поместить p слева от q
 {
     point n = q->west();
     point s = p->east();
-    p->move(n.x - s.x, n.y - s.y + 1);
+    p->move(n.x - s.x, n.y - s.y - 1);
 }
 
 void right(shape* p, const shape* q)//Поместить p справа от q
 {
     point n = q->east();
     point s = p->west();
-    p->move(n.x - s.x, n.y - s.y + 1);
+    p->move(n.x - s.x, n.y - s.y - 1);
 }
 
 void mid(shape* p, const shape* q)//Поместить p в центр q
 {
     point n = q->center();
     point s = p->center();
-    p->move(n.x - s.x, n.y - s.y + 1);
+    p->move(n.x - s.x, n.y - s.y - 1);
 }
 
 #endif // SHAPE_H
